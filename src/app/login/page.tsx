@@ -43,7 +43,7 @@ export default function LoginPage() {
             disabled={pending}
             className="w-full rounded-lg bg-zinc-900 px-4 py-2 font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
-            {pending ? "Sending…" : "Send magic link"}
+            {pending ? "Sending…" : "Authenticate with your BITS email"}
           </button>
         </form>
       )}
