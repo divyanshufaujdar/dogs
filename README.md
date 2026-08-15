@@ -35,6 +35,36 @@ project URL and anon key.
 
 Secrets live only in env vars and are never committed (`.env*` is gitignored).
 
+## For collaborators (working on this together)
+
+You've been added as a collaborator. To run the project locally:
+
+```bash
+git clone <this-repo-url>
+cd dogs
+npm install
+cp .env.local.example .env.local   # then paste the shared values (below)
+npm run dev                        # http://localhost:3000
+```
+
+Ask the project owner for the three env values to put in `.env.local`:
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and
+`SUPABASE_SERVICE_ROLE_KEY`. We all share **one Supabase project**, so the
+database/schema is already set up — you don't need to run any SQL.
+
+**Making changes:**
+
+```bash
+git checkout -b your-name/what-you-changed
+# ...edit...
+git commit -am "describe the change"
+git push -u origin your-name/what-you-changed
+```
+
+Then open a Pull Request on GitHub. Once it's merged to `main`, Vercel
+auto-deploys to production (if the repo is connected in Vercel → Settings → Git).
+Keep `main` shippable — build must pass (`npm run build`) before merging.
+
 ## Build phases
 
 1. **Skeleton, live** ← _current_ — styled app deployed, connected to Supabase.
