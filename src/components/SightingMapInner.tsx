@@ -23,13 +23,18 @@ import {
 import { addSighting } from "@/app/dogs/actions";
 
 function dotIcon(kind: "latest" | "old" | "draft") {
-  const cls =
-    kind === "latest"
-      ? "cd-pin cd-pin-latest"
-      : kind === "draft"
-        ? "cd-draft"
-        : "cd-pin cd-pin-old";
-  const size = kind === "old" ? 14 : 20;
+  // The pin you drop while logging: a clear red teardrop pointer.
+  if (kind === "draft") {
+    return L.divIcon({
+      className: "",
+      html: `<div class="cd-pointer">📍</div>`,
+      iconSize: [34, 34],
+      iconAnchor: [17, 32],
+      popupAnchor: [0, -30],
+    });
+  }
+  const cls = kind === "latest" ? "cd-pin cd-pin-latest" : "cd-pin cd-pin-old";
+  const size = kind === "latest" ? 20 : 14;
   return L.divIcon({
     className: "",
     html: `<div class="${cls}"></div>`,
@@ -175,7 +180,7 @@ export default function SightingMapInner({
         </MapContainer>
 
         {/* Count badge */}
-        <div className="pointer-events-none absolute left-3 top-3 z-[500] rounded-full bg-surface/90 px-3 py-1 text-xs font-medium text-ink shadow-sm backdrop-blur">
+        <div className="pointer-events-none absolute right-3 top-3 z-[500] rounded-full bg-surface/90 px-3 py-1 text-xs font-medium text-ink shadow-sm backdrop-blur">
           {sightings.length === 0
             ? "No sightings yet"
             : `${sightings.length} sighting${sightings.length === 1 ? "" : "s"} · trail shown`}
@@ -213,7 +218,7 @@ export default function SightingMapInner({
           </div>
         ) : (
           <p className="mt-2 text-xs text-muted">
-            🟢 Tap the map where you saw this dog to log a sighting.
+            📍 Tap the map where you saw this dog to drop a pin and log a sighting.
           </p>
         )
       ) : (

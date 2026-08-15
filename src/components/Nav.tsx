@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getCurrentProfile } from "@/lib/auth";
+import NavTabs from "@/components/NavTabs";
 
 function initials(name: string) {
   return name.trim().slice(0, 2).toUpperCase();
@@ -16,17 +17,12 @@ export default async function Nav() {
           <span className="grid h-8 w-8 place-items-center rounded-xl bg-brand text-lg shadow-sm">
             🐕
           </span>
-          <span className="font-display text-lg font-semibold text-ink">
+          <span className="hidden font-display text-lg font-semibold text-ink sm:inline">
             Campus Dogs
           </span>
         </Link>
 
-        <Link
-          href="/leaderboard"
-          className="ml-2 hidden items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-muted hover:bg-surface-2 hover:text-ink sm:inline-flex"
-        >
-          🏆 Leaderboard
-        </Link>
+        <NavTabs />
 
         <div className="ml-auto flex items-center gap-2">
           {profile ? (
