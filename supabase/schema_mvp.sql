@@ -4,22 +4,6 @@
 -- RLS is enabled on every table as required by the spec.
 
 -- ---------------------------------------------------------------------------
--- Helpers
--- ---------------------------------------------------------------------------
-
--- True when the current user is an admin. SECURITY DEFINER so it can read
--- profiles without tripping profiles' own RLS.
-create or replace function public.is_admin()
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select coalesce((select is_admin from public.profiles where id = auth.uid()), false);
-$$;
-
--- ---------------------------------------------------------------------------
 -- profiles — public mirror of auth.users
 -- ---------------------------------------------------------------------------
 create table if not exists public.profiles (
@@ -43,6 +27,19 @@ create policy "users insert their own profile"
 drop policy if exists "users update their own profile" on public.profiles;
 create policy "users update their own profile"
   on public.profiles for update using (id = auth.uid());
+
+-- True when the current user is an admin. Defined after profiles exists
+-- because a SQL function's body is validated against referenced tables at
+-- creation time. SECURITY DEFINER so it reads profiles without tripping RLS.
+create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce((select is_admin from public.profiles where id = auth.uid()), false);
+$$;
 
 -- Auto-create a profile row when a new auth user signs up.
 create or replace function public.handle_new_user()
