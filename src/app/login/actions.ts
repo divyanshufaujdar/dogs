@@ -19,15 +19,23 @@ function derivePassword(email: string): string {
 }
 
 /**
- * Domain-gated instant sign-in — no email is ever sent. Validates the BITS
- * domain, then signs the user in. On first visit it creates a pre-confirmed
- * account via the Admin API (which sends no email and ignores the confirm-email
- * setting and the email rate limit).
+ * DEV-ONLY fallback: domain-gated instant sign-in with a derived password —
+ * no email is ever sent. Kept for local development because real Google OAuth
+ * needs a Google Cloud project + redirect URI, which is a pain on localhost.
+ * In production the only gate is Google OAuth (one gate is easier to reason
+ * about than two), so this action refuses to run there.
  */
 export async function authenticate(
   _prev: LoginState,
   formData: FormData,
 ): Promise<LoginState> {
+  if (process.env.NODE_ENV === "production") {
+    return {
+      ok: false,
+      message: "Password sign-in is disabled — use “Continue with Google”.",
+    };
+  }
+
   const email = String(formData.get("email") ?? "")
     .trim()
     .toLowerCase();

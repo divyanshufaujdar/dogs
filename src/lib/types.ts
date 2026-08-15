@@ -38,6 +38,28 @@ export interface DogCard {
   photo_path: string | null;
   top_name: string | null;
   name_count: number;
+  red_flagged: boolean;
+}
+
+/** A likely-duplicate candidate surfaced before creating a new dog. */
+export interface DuplicateCandidate {
+  dogId: string;
+  score: number;
+  visualDistance: number;
+  homeRangeMeters: number | null;
+  photoPath: string | null;
+  topName: string | null;
+}
+
+/** A recent sighting of a red-flagged dog near the user's live position. */
+export interface DangerAlert {
+  dogId: string;
+  sightingId: string;
+  topName: string | null;
+  lat: number;
+  lng: number;
+  distanceMeters: number;
+  lastSeenAt: string;
 }
 
 /** A row from the `name_suggestion_counts` view. */

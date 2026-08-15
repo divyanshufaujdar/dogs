@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import "./globals.css";
 import Nav from "@/components/Nav";
 import ThemeToggle from "@/components/ThemeToggle";
+import DangerAlerts from "@/components/DangerAlerts";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -44,6 +45,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <Nav />
         </Suspense>
         <div className="flex flex-1 flex-col">{children}</div>
+        <DangerAlerts />
         <footer className="border-t border-border">
           <div className="mx-auto flex w-full max-w-5xl flex-col items-center justify-between gap-4 px-6 py-6 text-sm text-muted sm:flex-row">
             <span className="flex items-center gap-2">

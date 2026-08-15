@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { createAdminClient, hasAdminKey } from "@/lib/supabase/admin";
 import { dogPhotoUrl } from "@/lib/storage";
 import { ADMIN_COOKIE, sessionToken } from "@/lib/nimbooz";
-import { unlock, lock } from "./actions";
+import { unlock, lock, mergeDogs, setRedFlag } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -81,15 +81,21 @@ export default async function NimboozPage({
     { data: photos },
     { data: sightings },
     { data: names },
+    { data: safetyVotes },
+    { data: dupPairs },
   ] = await Promise.all([
     admin
       .from("profiles")
       .select("id, email, display_name, created_at")
       .order("created_at", { ascending: true }),
-    admin.from("dogs").select("id, created_by, status, created_at"),
+    admin
+      .from("dogs")
+      .select("id, created_by, status, created_at, red_flagged, red_flag_reviewed"),
     admin.from("photos").select("id, uploaded_by, storage_path, dog_id, is_primary, created_at"),
     admin.from("sightings").select("id, user_id"),
     admin.from("name_suggestions").select("id, suggested_by, name, dog_id"),
+    admin.from("safety_votes").select("dog_id, level"),
+    admin.rpc("possible_duplicate_pairs"),
   ]);
 
   const profs = profiles ?? [];
@@ -136,6 +142,61 @@ export default async function NimboozPage({
       };
     });
 
+  // Dog summaries reused by the duplicates + red-flag panels.
+  const dogInfo = (id: string) => {
+    const photo =
+      allPhotos.find((p) => p.dog_id === id && p.is_primary) ??
+      allPhotos.find((p) => p.dog_id === id);
+    return {
+      id,
+      name: allNames.find((n) => n.dog_id === id)?.name ?? "Unnamed",
+      photoPath: photo?.storage_path ?? null,
+    };
+  };
+
+  const biteCount = (id: string) =>
+    (safetyVotes ?? []).filter((v) => v.dog_id === id && v.level === "bites")
+      .length;
+
+  const activeDogs = allDogs.filter((d) => d.status === "active");
+  const duplicates: { a: ReturnType<typeof dogInfo>; b: ReturnType<typeof dogInfo>; distance: number }[] =
+    ((dupPairs ?? []) as { dog_a: string; dog_b: string; visual_distance: number }[]).map(
+      (p) => ({
+        a: dogInfo(p.dog_a),
+        b: dogInfo(p.dog_b),
+        distance: p.visual_distance,
+      }),
+    );
+
+  // Red-flag panel: anything flagged, plus anything with bite reports.
+  const safetyRows = activeDogs
+    .map((d) => ({
+      ...dogInfo(d.id),
+      red_flagged: d.red_flagged as boolean,
+      reviewed: d.red_flag_reviewed as boolean,
+      bites: biteCount(d.id),
+    }))
+    .filter((d) => d.red_flagged || d.bites > 0)
+    .sort((x, y) => Number(y.red_flagged) - Number(x.red_flagged) || y.bites - x.bites);
+
+  const DogThumb = ({ info }: { info: ReturnType<typeof dogInfo> }) => (
+    <div className="flex min-w-0 items-center gap-3">
+      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-surface-2">
+        {dogPhotoUrl(info.photoPath) ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={dogPhotoUrl(info.photoPath)!}
+            alt={info.name}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="grid h-full place-items-center text-xl">🐾</div>
+        )}
+      </div>
+      <p className="truncate text-sm font-medium text-ink">{info.name}</p>
+    </div>
+  );
+
   const stat = (label: string, value: number) => (
     <div className="card px-4 py-3">
       <p className="font-display text-2xl font-semibold text-ink">{value}</p>
@@ -163,6 +224,83 @@ export default async function NimboozPage({
         {stat("Photos", allPhotos.length)}
         {stat("Sightings", allSightings.length)}
       </div>
+
+      {/* Possible duplicates */}
+      <h2 className="eyebrow mb-3 mt-10">
+        Possible duplicates ({duplicates.length})
+      </h2>
+      {duplicates.length === 0 ? (
+        <p className="text-sm text-muted">
+          No unresolved look-alike pairs right now.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {duplicates.map((pair) => (
+            <div
+              key={`${pair.a.id}:${pair.b.id}`}
+              className="card flex flex-wrap items-center gap-4 p-4"
+            >
+              <DogThumb info={pair.a} />
+              <span className="text-muted">↔</span>
+              <DogThumb info={pair.b} />
+              <span className="text-xs text-muted">
+                distance {pair.distance.toFixed(3)}
+              </span>
+              <div className="ml-auto flex gap-2">
+                {/* Merging keeps the target; the newer/less-established dog
+                    becomes status=merged and its photos move across. */}
+                <form action={mergeDogs}>
+                  <input type="hidden" name="source" value={pair.b.id} />
+                  <input type="hidden" name="target" value={pair.a.id} />
+                  <button className="btn btn-ghost border border-border text-xs">
+                    Merge → keep “{pair.a.name}”
+                  </button>
+                </form>
+                <form action={mergeDogs}>
+                  <input type="hidden" name="source" value={pair.a.id} />
+                  <input type="hidden" name="target" value={pair.b.id} />
+                  <button className="btn btn-ghost border border-border text-xs">
+                    Merge → keep “{pair.b.name}”
+                  </button>
+                </form>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Red flags */}
+      <h2 className="eyebrow mb-3 mt-10">
+        Safety red flags ({safetyRows.length})
+      </h2>
+      {safetyRows.length === 0 ? (
+        <p className="text-sm text-muted">No bite reports or flagged dogs.</p>
+      ) : (
+        <div className="space-y-3">
+          {safetyRows.map((d) => (
+            <div key={d.id} className="card flex flex-wrap items-center gap-4 p-4">
+              <DogThumb info={d} />
+              <span className="text-xs text-muted">
+                {d.bites} bite report{d.bites === 1 ? "" : "s"}
+                {d.red_flagged &&
+                  (d.reviewed ? " · 🚩 flagged (admin)" : " · 🚩 flagged (auto)")}
+                {!d.red_flagged && d.reviewed && " · downgraded by admin"}
+              </span>
+              <form action={setRedFlag} className="ml-auto">
+                <input type="hidden" name="dog" value={d.id} />
+                <input
+                  type="hidden"
+                  name="flagged"
+                  value={d.red_flagged ? "false" : "true"}
+                />
+                <button className="btn btn-ghost border border-border text-xs">
+                  {d.red_flagged ? "Remove red flag" : "Red-flag this dog"}
+                </button>
+              </form>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Users */}
       <h2 className="eyebrow mb-3 mt-10">Who&apos;s logged in ({rows.length})</h2>

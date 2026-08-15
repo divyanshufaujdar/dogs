@@ -77,13 +77,78 @@ Keep `main` shippable — build must pass (`npm run build`) before merging.
 
 ## Database setup
 
-Paste [`supabase/schema_mvp.sql`](supabase/schema_mvp.sql) into the Supabase
-Dashboard → **SQL Editor** and Run it. It creates every MVP table, the
-`dog-photos` storage bucket, RLS policies, and helper views — and is safe to
-re-run. Auth is **magic-link email**; enable the Email provider in Supabase →
-Authentication → Providers.
+Paste these into the Supabase Dashboard → **SQL Editor** and Run them, in
+order (each is safe to re-run):
+
+1. [`supabase/schema_mvp.sql`](supabase/schema_mvp.sql) — MVP tables, the
+   `dog-photos` storage bucket, RLS policies, helper views.
+2. [`supabase/schema_one_vote.sql`](supabase/schema_one_vote.sql) — one name
+   suggestion + one name vote per user per dog.
+3. [`supabase/schema_favourites.sql`](supabase/schema_favourites.sql) —
+   favourite-dog vote + leaderboard views.
+4. [`supabase/schema_phase5_6.sql`](supabase/schema_phase5_6.sql) — sightings,
+   personality + safety votes.
+5. [`supabase/schema_phase7.sql`](supabase/schema_phase7.sql) — pgvector photo
+   embeddings, duplicate detection, dog merging, red flags + danger alerts.
+6. [`supabase/enable_bits_restriction.sql`](supabase/enable_bits_restriction.sql)
+   — **required** DB-level BITS email gate (a trigger on `auth.users`; the
+   app-level check alone can be bypassed via the API). Note: it blocks any new
+   non-BITS signup, including test accounts.
+
+## Google OAuth setup (Phase 7)
+
+Production sign-in is **Google OAuth restricted to BITS Pilani accounts**. The
+in-app password fallback only runs in dev. One-time setup, done by whoever
+owns the Supabase project (consider a project-shared Google account rather
+than a personal one):
+
+1. **Google Cloud Console** → create/select a project → OAuth consent screen →
+   Credentials → *Create credentials → OAuth client ID → Web application*.
+   Add the authorized redirect URI
+   `https://<project-ref>.supabase.co/auth/v1/callback`.
+2. **Supabase** → Authentication → Providers → Google → enable, paste the
+   Client ID and Secret.
+3. Deploy. The login page's `hd=bits-pilani.ac.in` hint pre-filters Google's
+   account picker, but enforcement is the domain check in
+   `src/app/auth/callback/route.ts` plus the DB trigger above.
+
+Heads-up on existing accounts: a Google sign-in creates a **new**
+`auth.users` row even for the same email, so accounts made via the old
+password scheme won't carry over their dogs/votes. Fine pre-launch; if real
+data must survive the switch, plan an email-based merge first.
 
 ## Changelog
+
+### Phase 7 — Google OAuth, duplicate detection, red-flag alerts ✅
+
+- **Google OAuth for BITS only:** login is a "Continue with Google" button;
+  the `/auth/callback` route verifies the BITS domain after the code exchange
+  and signs non-BITS accounts straight back out (`?error=domain`). The old
+  derived-password sign-in survives as a dev-only fallback.
+- **Duplicate detection:** every uploaded photo is embedded server-side with a
+  frozen CLIP model (`src/lib/embeddings.ts`, quantized ViT-B/32 via
+  transformers.js) into `photos.embedding` (pgvector). Before a new dog is
+  created, `findPossibleDuplicates` runs a nearest-neighbor search blended
+  with distance from each candidate's sighting home range
+  (`dog_home_range` view + `src/lib/dedup.ts` scoring) and the uploader gets a
+  "same dog?" prompt — *Yes* attaches the photo to the existing dog, *No*
+  proceeds. Thresholds in `src/lib/dedup.ts` need tuning against real campus
+  photos.
+- **Location capture:** adding a dog asks (optionally) for the browser's
+  location and logs it as the dog's first sighting, seeding its home range.
+- **Admin merge:** `/nimbooz` shows unresolved look-alike pairs
+  (`possible_duplicate_pairs`) with one-click merge (`merge_dogs` SQL function
+  re-parents photos/sightings/votes and dedupes names, summing shared-name
+  votes).
+- **Red flags:** a DB trigger flags a dog once **3 distinct users** vote
+  `bites` (absolute threshold, not majority). Flag shows as a 🚩 badge on the
+  grid, a banner on the dog page, and distinct danger pins on the map. Admins
+  can flag/downgrade in `/nimbooz`; a human decision stops the auto-trigger
+  from overriding it.
+- **Proximity alerts (v1, foreground):** an opt-in toggle (bottom-right)
+  watches your position while the tab is open and warns when you're within
+  150m of a <48h-old sighting of a red-flagged dog. Coordinates are checked
+  live and never stored. Push notifications (v2) deliberately deferred.
 
 ### Phases 2–4 — Add → name → vote → see (the MVP) ✅
 
