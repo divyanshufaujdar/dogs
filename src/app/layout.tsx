@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Fraunces } from "next/font/google";
 import { Suspense } from "react";
 import "./globals.css";
 import Nav from "@/components/Nav";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
@@ -43,12 +45,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </Suspense>
         <div className="flex flex-1 flex-col">{children}</div>
         <footer className="border-t border-border">
-          <div className="mx-auto flex w-full max-w-5xl flex-col items-center justify-between gap-2 px-6 py-6 text-sm text-muted sm:flex-row">
+          <div className="mx-auto flex w-full max-w-5xl flex-col items-center justify-between gap-4 px-6 py-6 text-sm text-muted sm:flex-row">
             <span className="flex items-center gap-2">
               <span aria-hidden>🐾</span> Campus Dogs — for the strays of BITS
               Pilani
             </span>
-            <span>Made by students, for the good boys & girls</span>
+            <div className="flex items-center gap-4">
+              <span className="hidden sm:inline">
+                Made by students, for the good boys &amp; girls
+              </span>
+              <ThemeToggle />
+            </div>
           </div>
         </footer>
       </body>

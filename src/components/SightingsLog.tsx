@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Sighting } from "@/lib/types";
 
 function timeAgo(iso: string): string {
@@ -17,6 +17,10 @@ function timeAgo(iso: string): string {
 
 export default function SightingsLog({ sightings }: { sightings: Sighting[] }) {
   const [expanded, setExpanded] = useState(false);
+  // Times are locale/clock-dependent → render them only after mount so the
+  // server and client markup match (no hydration mismatch).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   if (sightings.length === 0) {
     return (
@@ -40,15 +44,19 @@ export default function SightingsLog({ sightings }: { sightings: Sighting[] }) {
             />
             <div className="min-w-0">
               <p className="text-sm text-ink">
-                {i === 0 ? "Last found" : "Seen"}{" "}
-                <span className="text-muted">· {timeAgo(s.created_at)}</span>
+                {i === 0 ? "Last found" : "Seen"}
+                {mounted && (
+                  <span className="text-muted"> · {timeAgo(s.created_at)}</span>
+                )}
               </p>
               {s.note ? (
                 <p className="truncate text-sm text-muted">“{s.note}”</p>
               ) : (
-                <p className="text-xs text-muted/70">
-                  {new Date(s.created_at).toLocaleString()}
-                </p>
+                mounted && (
+                  <p className="text-xs text-muted/70">
+                    {new Date(s.created_at).toLocaleString()}
+                  </p>
+                )
               )}
             </div>
           </li>
@@ -60,9 +68,7 @@ export default function SightingsLog({ sightings }: { sightings: Sighting[] }) {
           onClick={() => setExpanded((v) => !v)}
           className="mt-3 text-sm font-medium text-brand hover:underline"
         >
-          {expanded
-            ? "Show fewer"
-            : `List all ${sightings.length} sightings`}
+          {expanded ? "Show fewer" : `List all ${sightings.length} sightings`}
         </button>
       )}
     </div>

@@ -71,10 +71,24 @@ export default async function DogPage({
       </Link>
 
       <div className="mt-4 overflow-hidden rounded-[1.3rem] border border-border shadow-[var(--shadow)]">
-        <div className="relative aspect-[16/10] w-full bg-surface-2">
+        <div className="relative aspect-[4/3] w-full bg-surface-2">
           {photo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={photo} alt={displayName} className="h-full w-full object-cover" />
+            <>
+              {/* Blurred fill so a portrait photo isn't cropped, no bars. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={photo}
+                alt=""
+                aria-hidden
+                className="absolute inset-0 h-full w-full scale-110 object-cover opacity-60 blur-2xl"
+              />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={photo}
+                alt={displayName}
+                className="relative h-full w-full object-contain"
+              />
+            </>
           ) : (
             <div className="grid h-full place-items-center text-6xl">🐾</div>
           )}
