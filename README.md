@@ -45,7 +45,32 @@ Secrets live only in env vars and are never committed (`.env*` is gitignored).
 6. Temperament tags — personality + safety votes, prominent `bites` warning.
 7. Harden, then delight — BITS-only signups, moderation, duplicate merge, extras.
 
+## Database setup
+
+Paste [`supabase/schema_mvp.sql`](supabase/schema_mvp.sql) into the Supabase
+Dashboard → **SQL Editor** and Run it. It creates every MVP table, the
+`dog-photos` storage bucket, RLS policies, and helper views — and is safe to
+re-run. Auth is **magic-link email**; enable the Email provider in Supabase →
+Authentication → Providers.
+
 ## Changelog
+
+### Phases 2–4 — Add → name → vote → see (the MVP) ✅
+
+- **Schema:** `dogs`, `photos`, `name_suggestions`, `name_votes`, `profiles`
+  (auto-created on signup via trigger), all with RLS. Views `dog_cards` and
+  `name_suggestion_counts` power the grid and rankings.
+- **Add a dog** (`/dogs/new`): photo uploads straight to Supabase Storage, then
+  a server action creates the dog + primary photo + first name (creator
+  auto-endorses it). Requires login.
+- **See the pack** (`/`): responsive grid of active dogs, each showing its
+  top-voted name and photo.
+- **Accounts:** magic-link sign-in, `/auth/callback` session exchange, session
+  refresh in `src/proxy.ts`, nav login state, sign-out. `created_by` /
+  `uploaded_by` stamped on every row. BITS-domain restriction is written and
+  wired (`src/lib/bits.ts`) but **off** — flip `RESTRICT_TO_BITS` in Phase 7.
+- **Naming vote** (`/dogs/[id]`): names ranked live by votes, one vote per user
+  per name (DB unique constraint), optimistic upvote/switch, add-a-name box.
 
 ### Phase 1 — Skeleton, live ✅
 

@@ -1,99 +1,66 @@
-import { checkSupabaseHealth } from "@/lib/supabase/health";
+import Link from "next/link";
+import { getDogCards } from "@/lib/queries";
+import { getCurrentUserId } from "@/lib/auth";
+import DogCard from "@/components/DogCard";
 
-const phases = [
-  { n: 1, title: "Skeleton, live", status: "current" },
-  { n: 2, title: "Add-a-dog, see-a-dog" },
-  { n: 3, title: "Accounts" },
-  { n: 4, title: "The naming vote" },
-  { n: 5, title: "Map & sightings" },
-  { n: 6, title: "Temperament tags" },
-  { n: 7, title: "Harden, then delight" },
-] as const;
+export const dynamic = "force-dynamic";
 
-function StatusPill({ state }: { state: string }) {
-  const map: Record<string, { label: string; cls: string }> = {
-    connected: {
-      label: "Supabase connected",
-      cls: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 ring-emerald-500/30",
-    },
-    unconfigured: {
-      label: "Supabase not configured",
-      cls: "bg-amber-500/15 text-amber-700 dark:text-amber-300 ring-amber-500/30",
-    },
-    error: {
-      label: "Supabase error",
-      cls: "bg-red-500/15 text-red-700 dark:text-red-300 ring-red-500/30",
-    },
-  };
-  const s = map[state] ?? map.error;
-  return (
-    <span
-      className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium ring-1 ring-inset ${s.cls}`}
-    >
-      <span className="h-2 w-2 rounded-full bg-current" />
-      {s.label}
-    </span>
-  );
+function isConfigured() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  return !!url && !url.includes("your-project");
 }
 
 export default async function Home() {
-  const health = await checkSupabaseHealth();
+  if (!isConfigured()) {
+    return (
+      <main className="mx-auto w-full max-w-4xl px-6 py-16">
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+          Almost there
+        </h1>
+        <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+          Add your Supabase URL and anon key to{" "}
+          <code className="font-mono">.env.local</code> and run{" "}
+          <code className="font-mono">supabase/schema_mvp.sql</code> in the SQL
+          Editor, then reload.
+        </p>
+      </main>
+    );
+  }
+
+  const [dogs, userId] = await Promise.all([getDogCards(), getCurrentUserId()]);
 
   return (
-    <div className="flex flex-1 flex-col items-center bg-zinc-50 px-6 py-16 dark:bg-zinc-950">
-      <main className="w-full max-w-2xl">
-        <div className="mb-3 flex items-center gap-3">
-          <span className="text-4xl">🐕</span>
-          <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-            Campus Dogs
+    <main className="mx-auto w-full max-w-4xl px-6 py-10">
+      <div className="mb-6 flex items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+            The pack
           </h1>
+          <p className="text-sm text-zinc-500">
+            {dogs.length === 0
+              ? "No dogs yet — be the first to add one."
+              : `${dogs.length} campus dog${dogs.length === 1 ? "" : "s"} and counting.`}
+          </p>
         </div>
-        <p className="mb-8 text-lg text-zinc-600 dark:text-zinc-400">
-          A community directory for the strays of BITS Pilani — upload photos,
-          vote on names, log sightings, and tag each dog&apos;s personality and
-          safety.
-        </p>
+        <Link
+          href={userId ? "/dogs/new" : "/login"}
+          className="shrink-0 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+        >
+          + Add a dog
+        </Link>
+      </div>
 
-        <div className="mb-10">
-          <StatusPill state={health.state} />
-          {health.state === "unconfigured" && (
-            <p className="mt-2 text-sm text-zinc-500">
-              Add <code className="font-mono">NEXT_PUBLIC_SUPABASE_URL</code> and{" "}
-              <code className="font-mono">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> to{" "}
-              <code className="font-mono">.env.local</code>, then restart the dev
-              server.
-            </p>
-          )}
-          {health.state === "error" && (
-            <p className="mt-2 text-sm text-red-500">{health.message}</p>
-          )}
+      {dogs.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-zinc-300 py-16 text-center text-zinc-500 dark:border-zinc-700">
+          🐾 Empty for now. Spotted a good boy or girl on campus? Add them.
         </div>
-
-        <ol className="space-y-2">
-          {phases.map((p) => (
-            <li
-              key={p.n}
-              className={`flex items-center gap-3 rounded-lg border px-4 py-3 ${
-                "status" in p
-                  ? "border-emerald-500/40 bg-emerald-500/5"
-                  : "border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
-              }`}
-            >
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-sm font-semibold text-white dark:bg-zinc-50 dark:text-zinc-900">
-                {p.n}
-              </span>
-              <span className="font-medium text-zinc-800 dark:text-zinc-200">
-                {p.title}
-              </span>
-              {"status" in p && (
-                <span className="ml-auto text-xs font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
-                  You are here
-                </span>
-              )}
-            </li>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+          {dogs.map((dog) => (
+            <DogCard key={dog.id} dog={dog} />
           ))}
-        </ol>
-      </main>
-    </div>
+        </div>
+      )}
+    </main>
   );
 }
