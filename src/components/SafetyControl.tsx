@@ -119,6 +119,36 @@ export default function SafetyControl({
           );
         })}
       </div>
+      {/* Red-flag status: where this dog stands against the auto-flag
+          threshold (3 distinct bite reports). The loud banner above handles
+          the flagged case; this row keeps the mechanism visible either way. */}
+      <div
+        className={`mt-3 flex items-center gap-2 rounded-lg border px-3 py-2 text-xs ${
+          redFlagged
+            ? "border-red-500/40 bg-red-500/5 text-red-700 dark:text-red-300"
+            : "border-border bg-surface-2/60 text-muted"
+        }`}
+      >
+        <span aria-hidden>🚩</span>
+        <span className="flex-1">
+          {redFlagged
+            ? "Red-flagged as dangerous — shown on the pack grid and map."
+            : `Red flag: ${Math.min(data.counts.bites, 3)} of 3 bite reports — flags automatically at 3.`}
+        </span>
+        {!redFlagged && (
+          <span className="flex gap-1" aria-hidden>
+            {[0, 1, 2].map((i) => (
+              <span
+                key={i}
+                className={`h-1.5 w-1.5 rounded-full ${
+                  i < data.counts.bites ? "bg-red-500" : "bg-border"
+                }`}
+              />
+            ))}
+          </span>
+        )}
+      </div>
+
       <p className="mt-2 text-xs text-muted">
         {data.total === 0
           ? canVote
