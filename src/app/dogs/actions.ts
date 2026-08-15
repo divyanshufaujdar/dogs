@@ -55,10 +55,12 @@ export async function createDog(input: {
     return { ok: false, error: nameErr?.message ?? "Could not add the name." };
   }
 
-  // Creator endorses their own suggestion (one vote per user per name).
-  await supabase
-    .from("name_votes")
-    .insert({ suggestion_id: suggestion.id, user_id: user.id });
+  // Creator endorses their own suggestion (their one vote for this dog).
+  await supabase.from("name_votes").insert({
+    suggestion_id: suggestion.id,
+    user_id: user.id,
+    dog_id: dog.id,
+  });
 
   revalidatePath("/");
   return { ok: true, data: { dogId: dog.id } };
@@ -86,23 +88,39 @@ export async function addName(
     .single();
 
   if (error) {
-    // Unique violation on (dog_id, lower(name)).
+    // Unique violations: (dog_id, lower(name)) or (dog_id, suggested_by).
     if (error.code === "23505") {
+      if (/suggested_by/.test(error.message)) {
+        return {
+          ok: false,
+          error: "You can only suggest one name per dog.",
+        };
+      }
       return { ok: false, error: "That name's already been suggested." };
     }
     return { ok: false, error: error.message };
   }
 
-  // Suggesting a name counts as a vote for it.
+  // Suggesting a name is this user's single vote for the dog — move it here.
   await supabase
     .from("name_votes")
-    .insert({ suggestion_id: suggestion.id, user_id: user.id });
+    .delete()
+    .eq("dog_id", dogId)
+    .eq("user_id", user.id);
+  await supabase.from("name_votes").insert({
+    suggestion_id: suggestion.id,
+    user_id: user.id,
+    dog_id: dogId,
+  });
 
   revalidatePath(`/dogs/${dogId}`);
   return { ok: true, data: { suggestionId: suggestion.id, name } };
 }
 
-/** Toggles the current user's vote on a name suggestion. */
+/**
+ * Sets the current user's single name vote for a dog. Voting for a different
+ * name moves the vote; voting for the one you already picked clears it.
+ */
 export async function toggleNameVote(
   dogId: string,
   suggestionId: string,
@@ -113,14 +131,16 @@ export async function toggleNameVote(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "You must be signed in." };
 
+  // The user has at most one vote per dog.
   const { data: existing } = await supabase
     .from("name_votes")
-    .select("id")
-    .eq("suggestion_id", suggestionId)
+    .select("id, suggestion_id")
+    .eq("dog_id", dogId)
     .eq("user_id", user.id)
     .maybeSingle();
 
-  if (existing) {
+  // Clicking the name you already voted for clears your vote.
+  if (existing && existing.suggestion_id === suggestionId) {
     const { error } = await supabase
       .from("name_votes")
       .delete()
@@ -130,9 +150,15 @@ export async function toggleNameVote(
     return { ok: true, data: { voted: false } };
   }
 
-  const { error } = await supabase
-    .from("name_votes")
-    .insert({ suggestion_id: suggestionId, user_id: user.id });
+  // Otherwise move (or place) the vote on this name.
+  if (existing) {
+    await supabase.from("name_votes").delete().eq("id", existing.id);
+  }
+  const { error } = await supabase.from("name_votes").insert({
+    suggestion_id: suggestionId,
+    user_id: user.id,
+    dog_id: dogId,
+  });
   if (error) return { ok: false, error: error.message };
   revalidatePath(`/dogs/${dogId}`);
   return { ok: true, data: { voted: true } };

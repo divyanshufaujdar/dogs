@@ -45,6 +45,7 @@ export default async function DogPage({
   const photo = dogPhotoUrl(dog.photo_path);
   const displayName = names[0]?.name ?? "Unnamed pup";
   const canVote = !!userId;
+  const hasSuggested = !!userId && names.some((n) => n.suggested_by === userId);
   const lastSeen = sightings[0];
 
   return (
@@ -74,7 +75,12 @@ export default async function DogPage({
       <div className="mt-10 space-y-10">
         <section>
           <SectionHeading>Names — vote for your favourite</SectionHeading>
-          <NameVotes dogId={dog.id} initial={names} canVote={canVote} />
+          <NameVotes
+            dogId={dog.id}
+            initial={names}
+            canVote={canVote}
+            hasSuggested={hasSuggested}
+          />
         </section>
 
         <section>

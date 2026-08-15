@@ -17,44 +17,52 @@ export default function NameVotes({
   dogId,
   initial,
   canVote,
+  hasSuggested,
 }: {
   dogId: string;
   initial: RankedName[];
   canVote: boolean;
+  hasSuggested: boolean;
 }) {
   const router = useRouter();
   const [names, setNames] = useState<RankedName[]>(rank(initial));
+  const [suggested, setSuggested] = useState(hasSuggested);
   const [newName, setNewName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
+  // Single choice per dog: voting a new name moves the vote off the old one.
   function vote(suggestionId: string) {
     if (!canVote) {
       router.push("/login");
       return;
     }
     setError(null);
-
-    // Optimistic: flip this row's vote and re-rank immediately.
     const snapshot = names;
+
     setNames((prev) =>
       rank(
-        prev.map((n) =>
-          n.suggestion_id === suggestionId
-            ? {
-                ...n,
-                voted_by_me: !n.voted_by_me,
-                votes: n.votes + (n.voted_by_me ? -1 : 1),
-              }
-            : n,
-        ),
+        prev.map((n) => {
+          if (n.suggestion_id === suggestionId) {
+            return {
+              ...n,
+              voted_by_me: !n.voted_by_me,
+              votes: n.votes + (n.voted_by_me ? -1 : 1),
+            };
+          }
+          // Clear my vote from any other name.
+          if (n.voted_by_me) {
+            return { ...n, voted_by_me: false, votes: n.votes - 1 };
+          }
+          return n;
+        }),
       ),
     );
 
     startTransition(async () => {
       const res = await toggleNameVote(dogId, suggestionId);
       if (!res.ok) {
-        setNames(snapshot); // revert
+        setNames(snapshot);
         setError(res.error);
       }
     });
@@ -75,10 +83,12 @@ export default function NameVotes({
       setError(res.error);
       return;
     }
-    // Show it right away — suggesting a name auto-votes for it.
+    // Suggesting is my single vote — add the new name and clear any prior pick.
     setNames((prev) =>
       rank([
-        ...prev,
+        ...prev.map((n) =>
+          n.voted_by_me ? { ...n, voted_by_me: false, votes: n.votes - 1 } : n,
+        ),
         {
           suggestion_id: res.data.suggestionId,
           dog_id: dogId,
@@ -91,6 +101,7 @@ export default function NameVotes({
       ]),
     );
     setNewName("");
+    setSuggested(true);
   }
 
   return (
@@ -128,21 +139,30 @@ export default function NameVotes({
         )}
       </ol>
 
-      <form onSubmit={submitName} className="mt-3 flex gap-2">
-        <input
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          maxLength={40}
-          placeholder={canVote ? "Suggest a name…" : "Sign in to suggest a name"}
-          className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-zinc-100"
-        />
-        <button
-          type="submit"
-          className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-        >
-          Add
-        </button>
-      </form>
+      {suggested ? (
+        <p className="mt-3 text-xs text-zinc-500">
+          You&apos;ve suggested your one name for this dog. Tap a name above to
+          move your vote (you get one).
+        </p>
+      ) : (
+        <form onSubmit={submitName} className="mt-3 flex gap-2">
+          <input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            maxLength={40}
+            placeholder={
+              canVote ? "Suggest a name…" : "Sign in to suggest a name"
+            }
+            className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-zinc-100"
+          />
+          <button
+            type="submit"
+            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            Add
+          </button>
+        </form>
+      )}
 
       {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
     </div>
