@@ -54,3 +54,37 @@ export interface NameSuggestionCount {
 export interface RankedName extends NameSuggestionCount {
   voted_by_me: boolean;
 }
+
+export interface Sighting {
+  id: string;
+  dog_id: string;
+  lat: number;
+  lng: number;
+  user_id: string;
+  note: string | null;
+  created_at: string;
+}
+
+export interface LatestSighting {
+  dog_id: string;
+  lat: number;
+  lng: number;
+  note: string | null;
+  created_at: string;
+}
+
+/** Personality traits with counts + whether the viewer picked each. */
+export interface TraitTally {
+  trait: string;
+  votes: number;
+  mine: boolean;
+}
+
+export type SafetyLevel = "friendly" | "chases" | "bites";
+
+export interface SafetySummary {
+  counts: Record<SafetyLevel, number>;
+  total: number;
+  majority: SafetyLevel | null;
+  mine: SafetyLevel | null;
+}

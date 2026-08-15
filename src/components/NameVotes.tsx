@@ -75,8 +75,22 @@ export default function NameVotes({
       setError(res.error);
       return;
     }
+    // Show it right away — suggesting a name auto-votes for it.
+    setNames((prev) =>
+      rank([
+        ...prev,
+        {
+          suggestion_id: res.data.suggestionId,
+          dog_id: dogId,
+          name: res.data.name,
+          suggested_by: "",
+          created_at: new Date().toISOString(),
+          votes: 1,
+          voted_by_me: true,
+        },
+      ]),
+    );
     setNewName("");
-    router.refresh(); // pull the authoritative list back with the new row
   }
 
   return (
