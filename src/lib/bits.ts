@@ -11,7 +11,7 @@
 // bypassed by hitting the API directly.
 // ---------------------------------------------------------------------------
 
-export const RESTRICT_TO_BITS = false;
+export const RESTRICT_TO_BITS = true;
 
 /** Allowed BITS Pilani email domains. */
 export const BITS_DOMAINS = [
