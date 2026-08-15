@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Campus Dogs 🐕
 
-## Getting Started
+A community directory for the stray dogs of **BITS Pilani**. Students upload
+photos, propose and vote on names, log where each dog was last seen on a campus
+map, and tag each dog's personality and safety status.
 
-First, run the development server:
+Built in phases — see the [build spec](#build-phases). `main` is always
+shippable.
+
+## Tech stack
+
+- **Frontend:** Next.js (App Router) + React + TypeScript + Tailwind CSS
+- **Backend / DB:** Supabase (Postgres, Auth, Storage, Row-Level Security)
+- **Maps:** Leaflet + OpenStreetMap (Phase 5)
+- **Hosting:** Vercel
+
+## Local development
 
 ```bash
+npm install
+cp .env.local.example .env.local   # then fill in your Supabase values
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000. The landing page shows a live **Supabase
+connection status** pill — green once `.env.local` is filled with a real
+project URL and anon key.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable                        | Where to find it                          | Public? |
+| ------------------------------- | ----------------------------------------- | ------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase → Settings → API → Project URL   | yes     |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Settings → API → anon public   | yes     |
 
-## Learn More
+Secrets live only in env vars and are never committed (`.env*` is gitignored).
 
-To learn more about Next.js, take a look at the following resources:
+## Build phases
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. **Skeleton, live** ← _current_ — styled app deployed, connected to Supabase.
+2. Add-a-dog, see-a-dog — upload form + dog grid.
+3. Accounts — magic-link login, stamp `created_by`.
+4. The naming vote — suggest & upvote names, ranked live. **(MVP line: 1–4.)**
+5. Map & sightings — Leaflet map, append-only sightings.
+6. Temperament tags — personality + safety votes, prominent `bites` warning.
+7. Harden, then delight — BITS-only signups, moderation, duplicate merge, extras.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Changelog
 
-## Deploy on Vercel
+### Phase 1 — Skeleton, live ✅
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Scaffolded Next.js (App Router) + TypeScript + Tailwind, `src/` layout.
+- Added Supabase browser and server clients (`src/lib/supabase/`) via
+  `@supabase/ssr`, ready for auth cookies in Phase 3.
+- Landing page lists the roadmap and shows a **live Supabase connectivity
+  check** (`checkSupabaseHealth`).
+- Env var templates (`.env.local.example`); secrets kept out of git.
