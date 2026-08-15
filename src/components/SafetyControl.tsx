@@ -31,10 +31,13 @@ export default function SafetyControl({
   dogId,
   initial,
   canVote,
+  redFlagged = false,
 }: {
   dogId: string;
   initial: SafetySummary;
   canVote: boolean;
+  /** Authoritative danger status (dogs.red_flagged) — not majority math. */
+  redFlagged?: boolean;
 }) {
   const router = useRouter();
   const [data, setData] = useState<SafetySummary>(initial);
@@ -72,14 +75,15 @@ export default function SafetyControl({
     });
   }
 
-  const bites = data.majority === "bites" && data.counts.bites > 0;
-
+  // The loud banner keys off the authoritative red flag (3+ distinct bite
+  // reports, admin-reviewable), not majority math that flips with each vote.
   return (
     <div>
-      {bites && (
+      {redFlagged && (
         <div className="mb-3 flex items-center gap-2 rounded-lg border border-red-500/50 bg-red-500/10 px-4 py-3 font-semibold text-red-700 dark:text-red-300">
-          <span className="text-xl">🛑</span>
-          Caution: the community reports this dog <u>bites</u>. Keep your distance.
+          <span className="text-xl">🚩</span>
+          Red-flagged: multiple people report this dog <u>bites</u>. Keep your
+          distance.
         </div>
       )}
 

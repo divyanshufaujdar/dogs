@@ -193,6 +193,14 @@ body {
   background: #e11d48;
   animation: cd-pulse 1.8s infinite;
 }
+/* Sightings of a red-flagged (dangerous) dog. */
+.cd-pin-danger {
+  background: #dc2626;
+  border-color: #fecaca;
+  box-shadow:
+    0 0 0 3px rgba(220, 38, 38, 0.35),
+    0 1px 3px rgba(0, 0, 0, 0.45);
+}
 .cd-pointer {
   font-size: 30px;
   line-height: 1;

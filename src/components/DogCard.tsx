@@ -12,6 +12,14 @@ export default function DogCard({ dog }: { dog: DogCardData }) {
       className="group relative block overflow-hidden rounded-[1.1rem] border border-border bg-surface shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow)]"
     >
       <div className="aspect-square w-full overflow-hidden bg-surface-2">
+        {dog.red_flagged && (
+          <span
+            title="Multiple bite reports — keep your distance"
+            className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded-full bg-red-600/90 px-2.5 py-1 text-xs font-semibold text-white shadow-sm"
+          >
+            🚩 Caution
+          </span>
+        )}
         {photo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img

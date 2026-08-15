@@ -122,7 +122,12 @@ export default async function DogPage({
         </Section>
 
         <Section title="Safety — how does this dog behave?">
-          <SafetyControl dogId={dog.id} initial={safety} canVote={canVote} />
+          <SafetyControl
+            dogId={dog.id}
+            initial={safety}
+            canVote={canVote}
+            redFlagged={dog.red_flagged}
+          />
         </Section>
 
         <Section title="Personality">
@@ -139,7 +144,12 @@ export default async function DogPage({
             ) : undefined
           }
         >
-          <SightingMap dogId={dog.id} sightings={sightings} canAdd={canVote} />
+          <SightingMap
+            dogId={dog.id}
+            sightings={sightings}
+            canAdd={canVote}
+            redFlagged={dog.red_flagged}
+          />
           <div className="mt-5 border-t border-border pt-4">
             <h3 className="eyebrow mb-3">Sightings log</h3>
             <SightingsLog sightings={sightings} />

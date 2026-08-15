@@ -22,7 +22,7 @@ import {
 } from "@/lib/constants";
 import { addSighting } from "@/app/dogs/actions";
 
-function dotIcon(kind: "latest" | "old" | "draft") {
+function dotIcon(kind: "latest" | "old" | "draft", danger = false) {
   // The pin you drop while logging: a clear red teardrop pointer.
   if (kind === "draft") {
     return L.divIcon({
@@ -33,7 +33,13 @@ function dotIcon(kind: "latest" | "old" | "draft") {
       popupAnchor: [0, -30],
     });
   }
-  const cls = kind === "latest" ? "cd-pin cd-pin-latest" : "cd-pin cd-pin-old";
+  // A red-flagged dog's pins are unmistakably "danger", not ordinary sightings
+  // — the map should answer "where on campus should I be careful."
+  const cls = danger
+    ? `cd-pin cd-pin-danger ${kind === "latest" ? "cd-pin-latest" : ""}`
+    : kind === "latest"
+      ? "cd-pin cd-pin-latest"
+      : "cd-pin cd-pin-old";
   const size = kind === "latest" ? 20 : 14;
   return L.divIcon({
     className: "",
@@ -81,10 +87,12 @@ export default function SightingMapInner({
   dogId,
   sightings,
   canAdd,
+  redFlagged = false,
 }: {
   dogId: string;
   sightings: Sighting[];
   canAdd: boolean;
+  redFlagged?: boolean;
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState<{ lat: number; lng: number } | null>(null);
@@ -157,7 +165,7 @@ export default function SightingMapInner({
               <Marker
                 key={s.id}
                 position={[s.lat, s.lng]}
-                icon={dotIcon(isLatest ? "latest" : "old")}
+                icon={dotIcon(isLatest ? "latest" : "old", redFlagged)}
                 zIndexOffset={isLatest ? 1000 : 0}
               >
                 <Popup>

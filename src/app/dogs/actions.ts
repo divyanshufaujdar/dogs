@@ -3,20 +3,49 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isInCampus } from "@/lib/constants";
-import type { SafetyLevel } from "@/lib/types";
+import { dogPhotoUrl } from "@/lib/storage";
+import { embedImage } from "@/lib/embeddings";
+import {
+  duplicateScore,
+  SUGGEST_SCORE_THRESHOLD,
+  VISUAL_DISTANCE_CEILING,
+} from "@/lib/dedup";
+import type {
+  DangerAlert,
+  DuplicateCandidate,
+  SafetyLevel,
+} from "@/lib/types";
 
 export type ActionResult<T = undefined> =
   | { ok: true; data: T }
   | { ok: false; error: string };
 
 /**
+ * Embeds an uploaded photo for duplicate matching. Best-effort: the embedding
+ * is a matching signal, so a model hiccup must never block adding a dog.
+ */
+async function tryEmbed(storagePath: string): Promise<number[] | null> {
+  const url = dogPhotoUrl(storagePath);
+  if (!url) return null;
+  try {
+    return await embedImage(url);
+  } catch (err) {
+    console.error("Photo embedding failed:", err);
+    return null;
+  }
+}
+
+/**
  * Creates a dog from an already-uploaded photo plus a first proposed name.
  * The creator auto-votes their own suggestion so the dog has a display name
  * immediately. Runs after the client has uploaded the file to storage.
+ * If the uploader shared their location, it becomes the dog's first sighting
+ * (seeding the home range used for duplicate matching).
  */
 export async function createDog(input: {
   storagePath: string;
   name: string;
+  location?: { lat: number; lng: number };
 }): Promise<ActionResult<{ dogId: string }>> {
   const name = input.name.trim();
   if (!name) return { ok: false, error: "Give the dog a starting name." };
@@ -28,6 +57,10 @@ export async function createDog(input: {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "You must be signed in." };
+
+  // Computed server-side so every upload lands in the dedup index regardless
+  // of what the client did or skipped.
+  const embedding = await tryEmbed(input.storagePath);
 
   const { data: dog, error: dogErr } = await supabase
     .from("dogs")
@@ -43,8 +76,19 @@ export async function createDog(input: {
     storage_path: input.storagePath,
     uploaded_by: user.id,
     is_primary: true,
+    embedding,
   });
   if (photoErr) return { ok: false, error: photoErr.message };
+
+  if (input.location && isInCampus(input.location.lat, input.location.lng)) {
+    await supabase.from("sightings").insert({
+      dog_id: dog.id,
+      lat: input.location.lat,
+      lng: input.location.lng,
+      user_id: user.id,
+      note: "First spotted here",
+    });
+  }
 
   const { data: suggestion, error: nameErr } = await supabase
     .from("name_suggestions")
@@ -312,4 +356,148 @@ export async function setSafety(
 
   revalidatePath(`/dogs/${dogId}`);
   return { ok: true, data: undefined };
+}
+
+// --- Phase 7: duplicate detection + danger alerts ---------------------------
+
+/**
+ * Looks for existing dogs that a freshly-uploaded photo might duplicate.
+ * Embeds the photo server-side, runs the pgvector nearest-neighbor query, and
+ * blends visual similarity with distance from each candidate's home range
+ * ("the library dog is never seen at the girls' hostel"). Called between the
+ * storage upload and createDog so AddDogForm can show the confirm-or-new
+ * prompt. Never fails hard — no candidates just means "proceed as a new dog".
+ */
+export async function findPossibleDuplicates(input: {
+  storagePath: string;
+  location?: { lat: number; lng: number };
+}): Promise<ActionResult<{ candidates: DuplicateCandidate[] }>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "You must be signed in." };
+
+  const embedding = await tryEmbed(input.storagePath);
+  if (!embedding) return { ok: true, data: { candidates: [] } };
+
+  const { data, error } = await supabase.rpc("find_similar_dogs", {
+    query_embedding: embedding,
+    query_lat: input.location?.lat ?? null,
+    query_lng: input.location?.lng ?? null,
+    match_limit: 5,
+  });
+  if (error) {
+    console.error("find_similar_dogs failed:", error.message);
+    return { ok: true, data: { candidates: [] } };
+  }
+
+  const candidates: DuplicateCandidate[] = (data ?? [])
+    .filter(
+      (row: { visual_distance: number }) =>
+        row.visual_distance <= VISUAL_DISTANCE_CEILING,
+    )
+    .map(
+      (row: {
+        dog_id: string;
+        visual_distance: number;
+        home_range_meters: number | null;
+        photo_path: string | null;
+        top_name: string | null;
+      }) => ({
+        dogId: row.dog_id,
+        score: duplicateScore(row.visual_distance, row.home_range_meters),
+        visualDistance: row.visual_distance,
+        homeRangeMeters: row.home_range_meters,
+        photoPath: row.photo_path,
+        topName: row.top_name,
+      }),
+    )
+    .filter((c: DuplicateCandidate) => c.score >= SUGGEST_SCORE_THRESHOLD)
+    .sort((a: DuplicateCandidate, b: DuplicateCandidate) => b.score - a.score);
+
+  return { ok: true, data: { candidates } };
+}
+
+/**
+ * The "yes, it's the same dog" path from the duplicate prompt: attaches the
+ * uploaded photo to the existing dog instead of creating a new one, and logs
+ * the location (when shared) as a sighting so the home range stays current.
+ */
+export async function addPhotoToExistingDog(input: {
+  dogId: string;
+  storagePath: string;
+  location?: { lat: number; lng: number };
+}): Promise<ActionResult<{ dogId: string }>> {
+  if (!input.storagePath) return { ok: false, error: "Photo upload failed." };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "You must be signed in." };
+
+  const embedding = await tryEmbed(input.storagePath);
+
+  const { error } = await supabase.from("photos").insert({
+    dog_id: input.dogId,
+    storage_path: input.storagePath,
+    uploaded_by: user.id,
+    is_primary: false,
+    embedding,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  if (input.location && isInCampus(input.location.lat, input.location.lng)) {
+    await supabase.from("sightings").insert({
+      dog_id: input.dogId,
+      lat: input.location.lat,
+      lng: input.location.lng,
+      user_id: user.id,
+    });
+  }
+
+  revalidatePath(`/dogs/${input.dogId}`);
+  return { ok: true, data: { dogId: input.dogId } };
+}
+
+/**
+ * Recent sightings of red-flagged dogs near the given position. Stateless by
+ * design: the coordinates are used for this one check and never stored.
+ */
+export async function nearbyDangerAlerts(
+  lat: number,
+  lng: number,
+): Promise<ActionResult<{ alerts: DangerAlert[] }>> {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return { ok: false, error: "Invalid location." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("nearby_danger_alerts", {
+    query_lat: lat,
+    query_lng: lng,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  const alerts: DangerAlert[] = (data ?? []).map(
+    (row: {
+      dog_id: string;
+      sighting_id: string;
+      top_name: string | null;
+      lat: number;
+      lng: number;
+      distance_meters: number;
+      last_seen_at: string;
+    }) => ({
+      dogId: row.dog_id,
+      sightingId: row.sighting_id,
+      topName: row.top_name,
+      lat: row.lat,
+      lng: row.lng,
+      distanceMeters: row.distance_meters,
+      lastSeenAt: row.last_seen_at,
+    }),
+  );
+  return { ok: true, data: { alerts } };
 }

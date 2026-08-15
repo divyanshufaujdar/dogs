@@ -17,6 +17,7 @@ export default function SightingMap(props: {
   dogId: string;
   sightings: Sighting[];
   canAdd: boolean;
+  redFlagged?: boolean;
 }) {
   return <SightingMapInner {...props} />;
 }
