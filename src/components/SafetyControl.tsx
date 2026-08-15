@@ -94,18 +94,18 @@ export default function SafetyControl({
               key={level}
               onClick={() => choose(level)}
               aria-pressed={isMine}
-              className={`flex flex-col items-center gap-1 rounded-lg border px-2 py-3 text-sm transition-colors ${
+              className={`flex flex-col items-center gap-1 rounded-xl border px-2 py-3 text-sm transition-colors ${
                 isMine
                   ? `${s.active} ring-2 ring-inset ${s.ring} border-transparent`
-                  : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  : "border-border bg-surface text-muted hover:bg-surface-2"
               }`}
             >
               <span className="text-lg">{emoji}</span>
               <span className="font-medium">{label}</span>
-              <span className="text-xs text-zinc-500">
+              <span className="text-xs text-muted">
                 {count} · {pct}%
               </span>
-              <span className="mt-1 h-1 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
+              <span className="mt-1 h-1 w-full overflow-hidden rounded-full bg-surface-2">
                 <span
                   className={`block h-full ${s.bar}`}
                   style={{ width: `${pct}%` }}
@@ -115,7 +115,7 @@ export default function SafetyControl({
           );
         })}
       </div>
-      <p className="mt-2 text-xs text-zinc-500">
+      <p className="mt-2 text-xs text-muted">
         {data.total === 0
           ? canVote
             ? "No safety votes yet — tap to add the first."

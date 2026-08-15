@@ -9,31 +9,33 @@ export default function DogCard({ dog }: { dog: DogCardData }) {
   return (
     <Link
       href={`/dogs/${dog.id}`}
-      className="group overflow-hidden rounded-xl border border-zinc-200 bg-white transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
+      className="group relative block overflow-hidden rounded-[1.1rem] border border-border bg-surface shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow)]"
     >
-      <div className="aspect-square w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+      <div className="aspect-square w-full overflow-hidden bg-surface-2">
         {photo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={photo}
             alt={name}
-            className="h-full w-full object-cover transition-transform group-hover:scale-105"
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-5xl">
-            🐾
-          </div>
+          <div className="grid h-full w-full place-items-center text-5xl">🐾</div>
         )}
-      </div>
-      <div className="p-3">
-        <p className="truncate font-semibold text-zinc-900 dark:text-zinc-50">
-          {name}
-        </p>
-        <p className="text-xs text-zinc-500">
-          {dog.name_count === 0
-            ? "No names yet"
-            : `${dog.name_count} name${dog.name_count === 1 ? "" : "s"} in the running`}
-        </p>
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/70 to-transparent"
+        />
+        <div className="absolute inset-x-0 bottom-0 p-3">
+          <p className="truncate font-display text-lg font-semibold text-white drop-shadow">
+            {name}
+          </p>
+          <p className="text-xs text-white/80">
+            {dog.name_count === 0
+              ? "No names yet"
+              : `${dog.name_count} name${dog.name_count === 1 ? "" : "s"} · tap to vote`}
+          </p>
+        </div>
       </div>
     </Link>
   );

@@ -82,17 +82,15 @@ export default function PersonalityTags({
             key={t.trait}
             onClick={() => toggle(t.trait)}
             aria-pressed={t.mine}
-            className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+            className={`rounded-full border px-3 py-1.5 text-sm capitalize transition-colors ${
               t.mine
-                ? "border-transparent bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
-                : "border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                ? "border-transparent bg-brand text-[var(--brand-ink)]"
+                : "border-border bg-surface text-ink hover:bg-surface-2"
             }`}
           >
             {t.trait}
             {t.votes > 0 && (
-              <span
-                className={`ml-1.5 ${t.mine ? "text-zinc-300 dark:text-zinc-500" : "text-zinc-400"}`}
-              >
+              <span className={`ml-1.5 ${t.mine ? "opacity-70" : "text-muted"}`}>
                 {t.votes}
               </span>
             )}
@@ -100,18 +98,15 @@ export default function PersonalityTags({
         ))}
       </div>
 
-      <form onSubmit={addCustom} className="mt-3 flex gap-2">
+      <form onSubmit={addCustom} className="mt-4 flex gap-2">
         <input
           value={custom}
           onChange={(e) => setCustom(e.target.value)}
           maxLength={24}
           placeholder={canVote ? "Add another trait…" : "Sign in to add a trait"}
-          className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-zinc-100"
+          className="input flex-1"
         />
-        <button
-          type="submit"
-          className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-        >
+        <button type="submit" className="btn btn-primary">
           Add
         </button>
       </form>

@@ -110,21 +110,23 @@ export default function NameVotes({
         {names.map((n, i) => (
           <li
             key={n.suggestion_id}
-            className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900"
+            className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors ${
+              n.voted_by_me
+                ? "border-brand/40 bg-brand-soft"
+                : "border-border bg-surface"
+            }`}
           >
-            <span className="w-5 text-center text-sm font-semibold text-zinc-400">
+            <span className="w-5 text-center font-display text-sm font-semibold text-muted">
               {i + 1}
             </span>
-            <span className="flex-1 font-medium text-zinc-900 dark:text-zinc-50">
-              {n.name}
-            </span>
+            <span className="flex-1 font-medium text-ink">{n.name}</span>
             <button
               onClick={() => vote(n.suggestion_id)}
               aria-pressed={n.voted_by_me}
               className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold transition-colors ${
                 n.voted_by_me
-                  ? "bg-emerald-500/15 text-emerald-700 ring-1 ring-inset ring-emerald-500/40 dark:text-emerald-300"
-                  : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                  ? "bg-brand text-[var(--brand-ink)]"
+                  : "bg-surface-2 text-muted hover:text-ink"
               }`}
             >
               <span aria-hidden>▲</span>
@@ -133,16 +135,16 @@ export default function NameVotes({
           </li>
         ))}
         {names.length === 0 && (
-          <li className="rounded-lg border border-dashed border-zinc-300 px-3 py-6 text-center text-sm text-zinc-500 dark:border-zinc-700">
+          <li className="rounded-xl border border-dashed border-border px-3 py-6 text-center text-sm text-muted">
             No names yet — suggest one below.
           </li>
         )}
       </ol>
 
       {suggested ? (
-        <p className="mt-3 text-xs text-zinc-500">
+        <p className="mt-3 text-xs text-muted">
           You&apos;ve suggested your one name for this dog. Tap a name above to
-          move your vote (you get one).
+          move your single vote.
         </p>
       ) : (
         <form onSubmit={submitName} className="mt-3 flex gap-2">
@@ -153,12 +155,9 @@ export default function NameVotes({
             placeholder={
               canVote ? "Suggest a name…" : "Sign in to suggest a name"
             }
-            className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-zinc-100"
+            className="input flex-1"
           />
-          <button
-            type="submit"
-            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
+          <button type="submit" className="btn btn-primary">
             Add
           </button>
         </form>

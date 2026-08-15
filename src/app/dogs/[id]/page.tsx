@@ -16,11 +16,23 @@ import SafetyControl from "@/components/SafetyControl";
 
 export const dynamic = "force-dynamic";
 
-function SectionHeading({ children }: { children: React.ReactNode }) {
+function Section({
+  title,
+  aside,
+  children,
+}: {
+  title: string;
+  aside?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
-    <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+    <section className="card p-5 sm:p-6">
+      <div className="mb-4 flex items-baseline justify-between gap-3">
+        <h2 className="eyebrow">{title}</h2>
+        {aside}
+      </div>
       {children}
-    </h2>
+    </section>
   );
 }
 
@@ -50,60 +62,58 @@ export default async function DogPage({
 
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-8">
-      <Link
-        href="/"
-        className="text-sm text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-      >
+      <Link href="/" className="text-sm text-muted hover:text-ink">
         ← The pack
       </Link>
 
-      <div className="mt-4 overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800">
-        <div className="aspect-video w-full bg-zinc-100 dark:bg-zinc-800">
+      <div className="mt-4 overflow-hidden rounded-[1.3rem] border border-border shadow-[var(--shadow)]">
+        <div className="relative aspect-[16/10] w-full bg-surface-2">
           {photo ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={photo} alt={displayName} className="h-full w-full object-cover" />
           ) : (
-            <div className="flex h-full items-center justify-center text-6xl">🐾</div>
+            <div className="grid h-full place-items-center text-6xl">🐾</div>
           )}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/70 to-transparent"
+          />
+          <h1 className="absolute bottom-4 left-5 font-display text-3xl font-semibold text-white drop-shadow">
+            {displayName}
+          </h1>
         </div>
       </div>
 
-      <h1 className="mt-5 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-        {displayName}
-      </h1>
-
-      <div className="mt-10 space-y-10">
-        <section>
-          <SectionHeading>Names — vote for your favourite</SectionHeading>
+      <div className="mt-8 space-y-5">
+        <Section title="Names — vote for your favourite">
           <NameVotes
             dogId={dog.id}
             initial={names}
             canVote={canVote}
             hasSuggested={hasSuggested}
           />
-        </section>
+        </Section>
 
-        <section>
-          <SectionHeading>Safety — how does this dog behave?</SectionHeading>
+        <Section title="Safety — how does this dog behave?">
           <SafetyControl dogId={dog.id} initial={safety} canVote={canVote} />
-        </section>
+        </Section>
 
-        <section>
-          <SectionHeading>Personality</SectionHeading>
+        <Section title="Personality">
           <PersonalityTags dogId={dog.id} initial={personality} canVote={canVote} />
-        </section>
+        </Section>
 
-        <section>
-          <SectionHeading>
-            Where&apos;s this dog?{" "}
-            {lastSeen && (
-              <span className="ml-1 font-normal normal-case text-zinc-400">
+        <Section
+          title="Where's this dog?"
+          aside={
+            lastSeen ? (
+              <span className="text-xs text-muted">
                 last found {new Date(lastSeen.created_at).toLocaleDateString()}
               </span>
-            )}
-          </SectionHeading>
+            ) : undefined
+          }
+        >
           <SightingMap dogId={dog.id} sightings={sightings} canAdd={canVote} />
-        </section>
+        </Section>
       </div>
     </main>
   );
