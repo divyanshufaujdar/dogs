@@ -1,27 +1,60 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   MapContainer,
   TileLayer,
   Marker,
   Popup,
+  Polyline,
+  useMap,
   useMapEvents,
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { Sighting } from "@/lib/types";
-import { CAMPUS_CENTER, CAMPUS_ZOOM, CAMPUS_BOUNDS, isInCampus } from "@/lib/constants";
+import {
+  CAMPUS_CENTER,
+  CAMPUS_ZOOM,
+  CAMPUS_BOUNDS,
+  isInCampus,
+} from "@/lib/constants";
 import { addSighting } from "@/app/dogs/actions";
 
-function pawIcon(highlight: boolean) {
+function dotIcon(kind: "latest" | "old" | "draft") {
+  const cls =
+    kind === "latest"
+      ? "cd-pin cd-pin-latest"
+      : kind === "draft"
+        ? "cd-draft"
+        : "cd-pin cd-pin-old";
+  const size = kind === "old" ? 14 : 20;
   return L.divIcon({
     className: "",
-    html: `<div style="font-size:${highlight ? 26 : 18}px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5))">${highlight ? "📍" : "🐾"}</div>`,
-    iconSize: [highlight ? 26 : 18, highlight ? 26 : 18],
-    iconAnchor: [highlight ? 13 : 9, highlight ? 26 : 18],
+    html: `<div class="${cls}"></div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
   });
+}
+
+/** Fits the view to all sightings (plus any draft) whenever they change. */
+function FitView({
+  points,
+}: {
+  points: [number, number][];
+}) {
+  const map = useMap();
+  useEffect(() => {
+    if (points.length === 0) {
+      map.setView(CAMPUS_CENTER, CAMPUS_ZOOM);
+    } else if (points.length === 1) {
+      map.setView(points[0], 17);
+    } else {
+      map.fitBounds(L.latLngBounds(points), { padding: [36, 36], maxZoom: 18 });
+    }
+  }, [map, points]);
+  return null;
 }
 
 function ClickToDrop({
@@ -54,24 +87,22 @@ export default function SightingMapInner({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // newest first → index 0 is the latest ("last found").
+  // sightings come newest-first; index 0 is the latest ("last found").
   const latestId = sightings[0]?.id;
+  // Trail runs oldest → newest so the line reads as the dog's path.
+  const chrono = [...sightings].reverse();
+  const trail: [number, number][] = chrono.map((s) => [s.lat, s.lng]);
+  const fitPoints: [number, number][] = draft
+    ? [...trail, [draft.lat, draft.lng]]
+    : trail;
 
   async function submit() {
     if (!draft) return;
     setBusy(true);
     setError(null);
-    const res = await addSighting({
-      dogId,
-      lat: draft.lat,
-      lng: draft.lng,
-      note,
-    });
+    const res = await addSighting({ dogId, lat: draft.lat, lng: draft.lng, note });
     setBusy(false);
-    if (!res.ok) {
-      setError(res.error);
-      return;
-    }
+    if (!res.ok) return setError(res.error);
     setDraft(null);
     setNote("");
     router.refresh();
@@ -79,20 +110,21 @@ export default function SightingMapInner({
 
   return (
     <div>
-      <div className="overflow-hidden rounded-xl border border-border">
+      <div className="relative overflow-hidden rounded-xl border border-border">
         <MapContainer
           center={CAMPUS_CENTER}
           zoom={CAMPUS_ZOOM}
           maxBounds={CAMPUS_BOUNDS}
           maxBoundsViscosity={1}
           minZoom={15}
-          style={{ height: 320, width: "100%" }}
+          style={{ height: 340, width: "100%" }}
           scrollWheelZoom={false}
         >
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
+          <FitView points={fitPoints} />
           <ClickToDrop
             enabled={canAdd}
             onDrop={(lat, lng) => {
@@ -100,22 +132,54 @@ export default function SightingMapInner({
               setDraft({ lat, lng });
             }}
           />
-          {sightings.map((s) => (
-            <Marker
-              key={s.id}
-              position={[s.lat, s.lng]}
-              icon={pawIcon(s.id === latestId)}
-            >
-              <Popup>
-                <strong>{s.id === latestId ? "Last found here" : "Seen here"}</strong>
-                <br />
-                {new Date(s.created_at).toLocaleString()}
-                {s.note ? <><br />“{s.note}”</> : null}
-              </Popup>
-            </Marker>
-          ))}
-          {draft && <Marker position={[draft.lat, draft.lng]} icon={pawIcon(true)} />}
+
+          {trail.length > 1 && (
+            <Polyline
+              positions={trail}
+              pathOptions={{
+                color: "#c76b2f",
+                weight: 3,
+                opacity: 0.7,
+                dashArray: "6 8",
+              }}
+            />
+          )}
+
+          {sightings.map((s, i) => {
+            const isLatest = s.id === latestId;
+            const order = sightings.length - i; // chronological number
+            return (
+              <Marker
+                key={s.id}
+                position={[s.lat, s.lng]}
+                icon={dotIcon(isLatest ? "latest" : "old")}
+                zIndexOffset={isLatest ? 1000 : 0}
+              >
+                <Popup>
+                  <strong>
+                    {isLatest ? "📍 Last found here" : `Sighting #${order}`}
+                  </strong>
+                  <br />
+                  {new Date(s.created_at).toLocaleString()}
+                  {s.note ? (
+                    <>
+                      <br />“{s.note}”
+                    </>
+                  ) : null}
+                </Popup>
+              </Marker>
+            );
+          })}
+
+          {draft && <Marker position={[draft.lat, draft.lng]} icon={dotIcon("draft")} />}
         </MapContainer>
+
+        {/* Count badge */}
+        <div className="pointer-events-none absolute left-3 top-3 z-[500] rounded-full bg-surface/90 px-3 py-1 text-xs font-medium text-ink shadow-sm backdrop-blur">
+          {sightings.length === 0
+            ? "No sightings yet"
+            : `${sightings.length} sighting${sightings.length === 1 ? "" : "s"} · trail shown`}
+        </div>
       </div>
 
       {canAdd ? (
@@ -149,7 +213,7 @@ export default function SightingMapInner({
           </div>
         ) : (
           <p className="mt-2 text-xs text-muted">
-            Tap the map where you saw this dog to log a sighting.
+            🟢 Tap the map where you saw this dog to log a sighting.
           </p>
         )
       ) : (

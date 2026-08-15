@@ -21,6 +21,13 @@ export default async function Nav() {
           </span>
         </Link>
 
+        <Link
+          href="/leaderboard"
+          className="ml-2 hidden items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-muted hover:bg-surface-2 hover:text-ink sm:inline-flex"
+        >
+          🏆 Leaderboard
+        </Link>
+
         <div className="ml-auto flex items-center gap-2">
           {profile ? (
             <>

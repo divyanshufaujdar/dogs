@@ -88,3 +88,12 @@ export interface SafetySummary {
   majority: SafetyLevel | null;
   mine: SafetyLevel | null;
 }
+
+/** A row from the `dog_leaderboard` view. */
+export interface LeaderboardDog {
+  id: string;
+  created_at: string;
+  photo_path: string | null;
+  top_name: string | null;
+  favourites: number;
+}

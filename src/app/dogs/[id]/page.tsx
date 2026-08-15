@@ -6,6 +6,7 @@ import {
   getSightings,
   getPersonality,
   getSafety,
+  getDogFavouriteInfo,
 } from "@/lib/queries";
 import { getCurrentUserId } from "@/lib/auth";
 import { dogPhotoUrl } from "@/lib/storage";
@@ -13,6 +14,8 @@ import NameVotes from "@/components/NameVotes";
 import SightingMap from "@/components/SightingMap";
 import PersonalityTags from "@/components/PersonalityTags";
 import SafetyControl from "@/components/SafetyControl";
+import FavouriteButton from "@/components/FavouriteButton";
+import SightingsLog from "@/components/SightingsLog";
 
 export const dynamic = "force-dynamic";
 
@@ -42,13 +45,14 @@ export default async function DogPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [dog, names, sightings, personality, safety, userId] =
+  const [dog, names, sightings, personality, safety, fav, userId] =
     await Promise.all([
       getDog(id),
       getRankedNames(id),
       getSightings(id),
       getPersonality(id),
       getSafety(id),
+      getDogFavouriteInfo(id),
       getCurrentUserId(),
     ]);
 
@@ -78,6 +82,15 @@ export default async function DogPage({
             aria-hidden
             className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/70 to-transparent"
           />
+          <div className="absolute right-4 top-4">
+            <FavouriteButton
+              dogId={dog.id}
+              initialFav={fav.mine}
+              initialCount={fav.count}
+              canVote={canVote}
+              size="sm"
+            />
+          </div>
           <h1 className="absolute bottom-4 left-5 font-display text-3xl font-semibold text-white drop-shadow">
             {displayName}
           </h1>
@@ -113,6 +126,10 @@ export default async function DogPage({
           }
         >
           <SightingMap dogId={dog.id} sightings={sightings} canAdd={canVote} />
+          <div className="mt-5 border-t border-border pt-4">
+            <h3 className="eyebrow mb-3">Sightings log</h3>
+            <SightingsLog sightings={sightings} />
+          </div>
         </Section>
       </div>
     </main>

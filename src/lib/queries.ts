@@ -7,6 +7,7 @@ import type {
   TraitTally,
   SafetyLevel,
   SafetySummary,
+  LeaderboardDog,
 } from "@/lib/types";
 import { PERSONALITY_TRAITS } from "@/lib/constants";
 
@@ -170,4 +171,57 @@ export async function getSafety(dogId: string): Promise<SafetySummary> {
   }
 
   return { counts: tally, total, majority, mine };
+}
+
+/** Dogs ranked by favourite votes (desc), newest as tiebreak. */
+export async function getLeaderboard(): Promise<LeaderboardDog[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("dog_leaderboard")
+    .select("*")
+    .order("favourites", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(`Failed to load leaderboard: ${error.message}`);
+  return (data ?? []) as LeaderboardDog[];
+}
+
+/** Favourite count for one dog + whether it's the current user's favourite. */
+export async function getDogFavouriteInfo(
+  dogId: string,
+): Promise<{ count: number; mine: boolean }> {
+  const supabase = await createClient();
+  const [{ count }, { data: userRes }] = await Promise.all([
+    supabase
+      .from("dog_favourites")
+      .select("*", { count: "exact", head: true })
+      .eq("dog_id", dogId),
+    supabase.auth.getUser(),
+  ]);
+
+  let mine = false;
+  const userId = userRes?.user?.id ?? null;
+  if (userId) {
+    const { data } = await supabase
+      .from("dog_favourites")
+      .select("dog_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    mine = data?.dog_id === dogId;
+  }
+  return { count: count ?? 0, mine };
+}
+
+/** The dog id the current user has marked as their favourite, or null. */
+export async function getMyFavourite(): Promise<string | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .from("dog_favourites")
+    .select("dog_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  return (data?.dog_id as string) ?? null;
 }

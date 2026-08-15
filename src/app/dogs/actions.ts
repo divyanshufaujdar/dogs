@@ -164,6 +164,47 @@ export async function toggleNameVote(
   return { ok: true, data: { voted: true } };
 }
 
+/**
+ * Sets the current user's single favourite dog (campus popularity vote).
+ * Passing the dog you already favourited clears it.
+ */
+export async function toggleFavourite(
+  dogId: string,
+): Promise<ActionResult<{ favourite: boolean }>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "You must be signed in." };
+
+  const { data: existing } = await supabase
+    .from("dog_favourites")
+    .select("dog_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  // Clicking your current favourite clears it.
+  if (existing && existing.dog_id === dogId) {
+    const { error } = await supabase
+      .from("dog_favourites")
+      .delete()
+      .eq("user_id", user.id);
+    if (error) return { ok: false, error: error.message };
+    revalidatePath("/leaderboard");
+    revalidatePath(`/dogs/${dogId}`);
+    return { ok: true, data: { favourite: false } };
+  }
+
+  // Otherwise move (or set) the favourite — one row per user.
+  const { error } = await supabase
+    .from("dog_favourites")
+    .upsert({ user_id: user.id, dog_id: dogId }, { onConflict: "user_id" });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/leaderboard");
+  revalidatePath(`/dogs/${dogId}`);
+  return { ok: true, data: { favourite: true } };
+}
+
 // --- Phase 5: sightings -----------------------------------------------------
 
 /** Logs where a dog was seen. Pins must fall inside the campus bounding box. */
