@@ -104,7 +104,7 @@ export default async function DogPage({
         <div className="pointer-events-none absolute bottom-4 left-5 z-[6]">
           {gentle && (
             <span className="mb-1.5 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
-              💚 Potential friend
+              Potential friend
             </span>
           )}
           <h1 className="font-display text-3xl font-semibold text-white drop-shadow">

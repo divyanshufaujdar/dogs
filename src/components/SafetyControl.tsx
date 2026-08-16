@@ -98,7 +98,6 @@ export default function SafetyControl({
 
       {gentle && (
         <div className="mb-3 flex items-center gap-2 rounded-lg border border-emerald-500/50 bg-emerald-500/10 px-4 py-3 font-semibold text-emerald-700 dark:text-emerald-300">
-          <span className="text-xl">💚</span>
           A potential friend — gentle with everyone, no bites or chases
           reported.
         </div>
