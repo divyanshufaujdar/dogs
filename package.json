@@ -9,7 +9,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@huggingface/transformers": "^4.2.0",
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.3",
     "@types/leaflet": "^1.9.22",
