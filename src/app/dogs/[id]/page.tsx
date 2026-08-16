@@ -136,6 +136,7 @@ export default async function DogPage({
             sightings={sightings}
             canAdd={canVote}
             redFlagged={dog.red_flagged}
+            biteReports={safety.counts.bites}
           />
           <div className="mt-5 border-t border-border pt-4">
             <h3 className="eyebrow mb-3">Sightings log</h3>

@@ -8,6 +8,7 @@ import {
   Marker,
   Popup,
   Polyline,
+  Circle,
   useMap,
   useMapEvents,
 } from "react-leaflet";
@@ -68,6 +69,38 @@ function FitView({
   return null;
 }
 
+const DANGER_RADIUS_M = 90;
+
+function metersBetween(a: [number, number], b: [number, number]): number {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b[0] - a[0]);
+  const dLng = toRad(b[1] - a[1]);
+  const lat1 = toRad(a[0]);
+  const lat2 = toRad(b[0]);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+/** Where the dog is seen MOST: the sighting with the most neighbours nearby. */
+function densestSpot(pts: { lat: number; lng: number }[]): [number, number] | null {
+  if (!pts.length) return null;
+  let best = pts[0];
+  let bestCount = -1;
+  for (const s of pts) {
+    const c = pts.filter(
+      (o) => metersBetween([s.lat, s.lng], [o.lat, o.lng]) <= DANGER_RADIUS_M,
+    ).length;
+    if (c > bestCount) {
+      bestCount = c;
+      best = s;
+    }
+  }
+  return [best.lat, best.lng];
+}
+
 function ClickToDrop({
   enabled,
   onDrop,
@@ -88,11 +121,14 @@ export default function SightingMapInner({
   sightings,
   canAdd,
   redFlagged = false,
+  biteReports = 0,
 }: {
   dogId: string;
   sightings: Sighting[];
   canAdd: boolean;
   redFlagged?: boolean;
+  /** Distinct "bites" safety reports — >5 draws a red danger zone on the map. */
+  biteReports?: number;
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState<{ lat: number; lng: number } | null>(null);
@@ -108,6 +144,10 @@ export default function SightingMapInner({
   const fitPoints: [number, number][] = draft
     ? [...trail, [draft.lat, draft.lng]]
     : trail;
+
+  // >5 bite reports → mark the spot the dog is found most as a red danger zone.
+  const showDangerZone = biteReports > 5 && sightings.length > 0;
+  const dangerCenter = showDangerZone ? densestSpot(sightings) : null;
 
   async function submit() {
     if (!draft) return;
@@ -138,6 +178,26 @@ export default function SightingMapInner({
             url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <FitView points={fitPoints} />
+
+          {dangerCenter && (
+            <Circle
+              center={dangerCenter}
+              radius={DANGER_RADIUS_M}
+              pathOptions={{
+                color: "#dc2626",
+                fillColor: "#dc2626",
+                fillOpacity: 0.25,
+                weight: 2,
+              }}
+            >
+              <Popup>
+                <strong>⚠️ Bite danger zone</strong>
+                <br />
+                {biteReports} bite reports — this dog is found here most.
+              </Popup>
+            </Circle>
+          )}
+
           <ClickToDrop
             enabled={canAdd}
             onDrop={(lat, lng) => {
@@ -193,6 +253,13 @@ export default function SightingMapInner({
             ? "No sightings yet"
             : `${sightings.length} sighting${sightings.length === 1 ? "" : "s"} · trail shown`}
         </div>
+
+        {/* Danger-zone legend */}
+        {dangerCenter && (
+          <div className="pointer-events-none absolute bottom-3 left-3 z-[500] flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1 text-xs font-semibold text-white shadow-sm">
+            🚨 Bite danger zone
+          </div>
+        )}
       </div>
 
       {canAdd ? (

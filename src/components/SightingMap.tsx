@@ -18,6 +18,7 @@ export default function SightingMap(props: {
   sightings: Sighting[];
   canAdd: boolean;
   redFlagged?: boolean;
+  biteReports?: number;
 }) {
   return <SightingMapInner {...props} />;
 }
