@@ -69,7 +69,7 @@ function FitView({
   return null;
 }
 
-const DANGER_RADIUS_M = 90;
+const DANGER_RADIUS_M = 50;
 
 function metersBetween(a: [number, number], b: [number, number]): number {
   const R = 6371000;

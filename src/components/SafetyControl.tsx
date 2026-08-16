@@ -75,6 +75,15 @@ export default function SafetyControl({
     });
   }
 
+  // A beloved gentle dog: enough votes, overwhelmingly friendly, and zero
+  // bites/chases reported. Never shown for a red-flagged dog.
+  const gentle =
+    !redFlagged &&
+    data.total >= 3 &&
+    data.counts.bites === 0 &&
+    data.counts.chases === 0 &&
+    data.counts.friendly / data.total > 0.9;
+
   // The loud banner keys off the authoritative red flag (3+ distinct bite
   // reports, admin-reviewable), not majority math that flips with each vote.
   return (
@@ -84,6 +93,14 @@ export default function SafetyControl({
           <span className="text-xl">🚩</span>
           Red-flagged: multiple people report this dog <u>bites</u>. Keep your
           distance.
+        </div>
+      )}
+
+      {gentle && (
+        <div className="mb-3 flex items-center gap-2 rounded-lg border border-emerald-500/50 bg-emerald-500/10 px-4 py-3 font-semibold text-emerald-700 dark:text-emerald-300">
+          <span className="text-xl">💚</span>
+          A potential friend — gentle with everyone, no bites or chases
+          reported.
         </div>
       )}
 

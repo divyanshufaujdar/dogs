@@ -66,6 +66,14 @@ export default async function DogPage({
   const hasSuggested = !!userId && names.some((n) => n.suggested_by === userId);
   const lastSeen = sightings[0];
 
+  // A gentle, beloved dog: ≥90% friendly with no bites/chases (min 3 votes).
+  const gentle =
+    !dog.red_flagged &&
+    safety.total >= 3 &&
+    safety.counts.bites === 0 &&
+    safety.counts.chases === 0 &&
+    safety.counts.friendly / safety.total > 0.9;
+
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-8">
       <Link href="/" className="text-sm text-muted hover:text-ink">
@@ -93,9 +101,16 @@ export default async function DogPage({
             size="sm"
           />
         </div>
-        <h1 className="pointer-events-none absolute bottom-4 left-5 z-[6] font-display text-3xl font-semibold text-white drop-shadow">
-          {displayName}
-        </h1>
+        <div className="pointer-events-none absolute bottom-4 left-5 z-[6]">
+          {gentle && (
+            <span className="mb-1.5 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
+              💚 Potential friend
+            </span>
+          )}
+          <h1 className="font-display text-3xl font-semibold text-white drop-shadow">
+            {displayName}
+          </h1>
+        </div>
       </div>
 
       <div className="mt-8 space-y-5">
