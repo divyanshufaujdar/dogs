@@ -18,7 +18,8 @@ export default async function NewDogPage() {
         Add a dog
       </h1>
       <p className="mb-6 mt-1.5 text-sm text-muted">
-        Snap or upload a photo and give them a name to get started.
+        Just snap a photo — we&apos;ll instantly check if it&apos;s a pup we
+        already know, and only ask for a name if it&apos;s new.
       </p>
       <div className="card p-6 shadow-[var(--shadow)]">
         <AddDogForm />

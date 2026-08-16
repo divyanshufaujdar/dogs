@@ -46,6 +46,9 @@ export async function createDog(input: {
   storagePath: string;
   name: string;
   location?: { lat: number; lng: number };
+  // Reuse the embedding already computed during match-checking, so we don't
+  // run the (slow) CLIP model a second time. Falls back to computing it.
+  embedding?: number[] | null;
 }): Promise<ActionResult<{ dogId: string }>> {
   const name = input.name.trim();
   if (!name) return { ok: false, error: "Give the dog a starting name." };
@@ -58,9 +61,10 @@ export async function createDog(input: {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "You must be signed in." };
 
-  // Computed server-side so every upload lands in the dedup index regardless
-  // of what the client did or skipped.
-  const embedding = await tryEmbed(input.storagePath);
+  // Reuse the match-time embedding when we have it; only compute as a fallback
+  // so every upload still lands in the dedup index.
+  const embedding =
+    input.embedding ?? (await tryEmbed(input.storagePath));
 
   const { data: dog, error: dogErr } = await supabase
     .from("dogs")
@@ -371,7 +375,9 @@ export async function setSafety(
 export async function findPossibleDuplicates(input: {
   storagePath: string;
   location?: { lat: number; lng: number };
-}): Promise<ActionResult<{ candidates: DuplicateCandidate[] }>> {
+}): Promise<
+  ActionResult<{ candidates: DuplicateCandidate[]; embedding: number[] | null }>
+> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -379,7 +385,7 @@ export async function findPossibleDuplicates(input: {
   if (!user) return { ok: false, error: "You must be signed in." };
 
   const embedding = await tryEmbed(input.storagePath);
-  if (!embedding) return { ok: true, data: { candidates: [] } };
+  if (!embedding) return { ok: true, data: { candidates: [], embedding: null } };
 
   const { data, error } = await supabase.rpc("find_similar_dogs", {
     query_embedding: embedding,
@@ -389,7 +395,7 @@ export async function findPossibleDuplicates(input: {
   });
   if (error) {
     console.error("find_similar_dogs failed:", error.message);
-    return { ok: true, data: { candidates: [] } };
+    return { ok: true, data: { candidates: [], embedding } };
   }
 
   const candidates: DuplicateCandidate[] = (data ?? [])
@@ -416,7 +422,7 @@ export async function findPossibleDuplicates(input: {
     .filter((c: DuplicateCandidate) => c.score >= SUGGEST_SCORE_THRESHOLD)
     .sort((a: DuplicateCandidate, b: DuplicateCandidate) => b.score - a.score);
 
-  return { ok: true, data: { candidates } };
+  return { ok: true, data: { candidates, embedding } };
 }
 
 /**
@@ -428,6 +434,7 @@ export async function addPhotoToExistingDog(input: {
   dogId: string;
   storagePath: string;
   location?: { lat: number; lng: number };
+  embedding?: number[] | null;
 }): Promise<ActionResult<{ dogId: string }>> {
   if (!input.storagePath) return { ok: false, error: "Photo upload failed." };
 
@@ -437,7 +444,8 @@ export async function addPhotoToExistingDog(input: {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "You must be signed in." };
 
-  const embedding = await tryEmbed(input.storagePath);
+  const embedding =
+    input.embedding ?? (await tryEmbed(input.storagePath));
 
   const { error } = await supabase.from("photos").insert({
     dog_id: input.dogId,

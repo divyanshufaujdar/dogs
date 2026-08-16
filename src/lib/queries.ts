@@ -36,6 +36,19 @@ export async function getDog(id: string): Promise<DogCard | null> {
   return (data as DogCard) ?? null;
 }
 
+/** All of a dog's photo storage paths, primary first then newest. */
+export async function getDogPhotos(dogId: string): Promise<string[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("photos")
+    .select("storage_path, is_primary, created_at")
+    .eq("dog_id", dogId)
+    .order("is_primary", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(`Failed to load photos: ${error.message}`);
+  return (data ?? []).map((p) => p.storage_path as string);
+}
+
 /**
  * Ranked name suggestions for a dog, annotated with whether the current viewer
  * has voted for each. Sorted by votes desc, then oldest first as a tiebreak.
