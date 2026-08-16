@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { createAdminClient, hasAdminKey } from "@/lib/supabase/admin";
 import { dogPhotoUrl } from "@/lib/storage";
 import { ADMIN_COOKIE, sessionToken } from "@/lib/nimbooz";
-import { unlock, lock, mergeDogs, setRedFlag } from "./actions";
+import { unlock, lock, mergeDogs, setRedFlag, deleteSubmission } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -370,6 +370,15 @@ export default async function NimboozPage({
               <p className="text-xs text-muted/70">
                 {new Date(u.created_at).toLocaleDateString()}
               </p>
+              <form action={deleteSubmission} className="mt-2">
+                <input type="hidden" name="dog" value={u.id} />
+                <button
+                  type="submit"
+                  className="w-full rounded-lg border border-red-500/40 bg-red-500/10 px-2 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-500/20 dark:text-red-400"
+                >
+                  Delete submission
+                </button>
+              </form>
             </div>
           </div>
         ))}

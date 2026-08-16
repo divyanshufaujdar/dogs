@@ -301,18 +301,35 @@ export default function AddDogForm() {
   // --- Pick: the entry point ------------------------------------------------
   return (
     <div className="space-y-4">
-      <label className="flex aspect-video cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-surface-2 text-muted transition-colors hover:border-brand">
-        <span className="text-3xl">📷</span>
-        <span className="text-sm font-medium">Take or choose a photo</span>
-        <span className="text-xs">We&apos;ll instantly check for a match</span>
-        <input
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="hidden"
-          onChange={onPick}
-        />
-      </label>
+      <div className="grid aspect-video place-items-center rounded-xl border-2 border-dashed border-border bg-surface-2 text-muted">
+        <div className="flex flex-col items-center gap-3 px-4 text-center">
+          <span className="text-3xl">🐶</span>
+          <span className="text-xs">We&apos;ll instantly check for a match</span>
+          <div className="flex flex-wrap justify-center gap-2">
+            {/* Camera: `capture` opens the camera directly on mobile. */}
+            <label className="btn btn-brand cursor-pointer">
+              📷 Take a photo
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={onPick}
+              />
+            </label>
+            {/* Gallery: no `capture`, so mobile opens the photo library. */}
+            <label className="btn btn-ghost cursor-pointer border border-border">
+              🖼️ Choose from gallery
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={onPick}
+              />
+            </label>
+          </div>
+        </div>
+      </div>
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
     </div>
   );

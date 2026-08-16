@@ -34,6 +34,33 @@ export async function lock() {
 }
 
 /**
+ * Permanently deletes a dog submission and everything tied to it (photos,
+ * names, votes, sightings, favourites cascade) plus its storage files.
+ */
+export async function deleteSubmission(formData: FormData) {
+  if (!(await isUnlocked())) redirect("/nimbooz");
+  const dogId = String(formData.get("dog") ?? "");
+  if (!dogId) redirect("/nimbooz");
+
+  const admin = createAdminClient();
+  const { data: photos } = await admin
+    .from("photos")
+    .select("storage_path")
+    .eq("dog_id", dogId);
+
+  const { error } = await admin.from("dogs").delete().eq("id", dogId);
+  if (error) console.error("deleteSubmission failed:", error.message);
+
+  const paths = (photos ?? []).map((p) => p.storage_path as string);
+  if (paths.length) await admin.storage.from("dog-photos").remove(paths);
+
+  revalidatePath("/");
+  revalidatePath("/leaderboard");
+  revalidatePath("/nimbooz");
+  redirect("/nimbooz");
+}
+
+/**
  * Folds a duplicate dog into its canonical twin (admin-confirmed — merging is
  * never automatic, since a wrong merge fuses two different animals' history).
  * All the re-parenting/dedup logic lives in the merge_dogs SQL function.

@@ -1,14 +1,12 @@
 import Link from "next/link";
 import { getCurrentProfile } from "@/lib/auth";
+import { rollHandle } from "@/lib/handle";
 import NavTabs from "@/components/NavTabs";
-
-function initials(name: string) {
-  return name.trim().slice(0, 2).toUpperCase();
-}
 
 export default async function Nav() {
   const profile = await getCurrentProfile();
-  const label = profile?.display_name ?? profile?.email ?? "";
+  // e.g. f20250970@… -> F0970
+  const handle = rollHandle(profile?.email ?? profile?.display_name);
 
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-background/80 backdrop-blur">
@@ -32,10 +30,10 @@ export default async function Nav() {
               </Link>
               <div className="flex items-center gap-2 rounded-full border border-border bg-surface py-1 pl-1 pr-1 sm:pr-3">
                 <span className="grid h-7 w-7 place-items-center rounded-full bg-surface-2 text-xs font-bold text-ink">
-                  {initials(label || "?")}
+                  {handle.charAt(0)}
                 </span>
-                <span className="hidden max-w-[10rem] truncate text-sm text-muted sm:inline">
-                  {label}
+                <span className="hidden text-sm font-medium text-ink sm:inline">
+                  {handle}
                 </span>
               </div>
               <form action="/auth/signout" method="post">
